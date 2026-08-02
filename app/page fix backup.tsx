@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import Papa from "papaparse";
-import JSZip from "jszip";
-import { saveAs } from "file-saver";
 
 type Item = {
   file: File;
@@ -12,7 +10,6 @@ type Item = {
   title: string;
   keywords: string;
 };
-
 
 const formatKeywords = (value: string) => {
   // pisah berdasarkan koma
@@ -35,17 +32,10 @@ const countKeywords = (value: string) => {
 };
 
 export default function Home() {
-  
   const [items, setItems] = useState<Item[]>([]);
-
-  const [editing, setEditing] = useState<{
-  index: number;
-  keyword: string;
-} | null>(null);
-  const [exportName, setExportName] = useState("");
-  const date = new Date().toISOString().split("T")[0];
+  
   const importCSV = (file: File) => {
-  const normalize = (name: string) =>
+    const normalize = (name: string) =>
       name
         .toLowerCase()
         .replace(/\.[^/.]+$/, "") // hapus ekstensi
@@ -55,10 +45,10 @@ export default function Home() {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-  const data = results.data as any[];
+        const data = results.data as any[];
 
-  const updated = items.map((item) => {
-  const match = data.find(
+        const updated = items.map((item) => {
+          const match = data.find(
             (row) =>
               normalize(row.filename || "") ===
               normalize(item.file.name)
@@ -78,13 +68,13 @@ export default function Home() {
         setItems(updated);
       },
     });
-    };
+  };
 
   const [marketplace, setMarketplace] = useState("canva");
   const [aiProvider, setAiProvider] = useState("openai");
 
   const onDrop = (acceptedFiles: File[]) => {
-  const newItems = acceptedFiles.map((file) => ({
+    const newItems = acceptedFiles.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
       title: file.name
@@ -106,84 +96,6 @@ export default function Home() {
     updated[index][field] = value;
     setItems(updated);
   };
-
-const generateCSVByMarket = (market: string) => {
-  if (market === "canva") {
-    return items.map((item) => ({
-      filename: item.file.name,
-      title: item.title,
-      keywords: item.keywords,
-      Artist: "mchlabs",
-      locale: "en",
-      description: item.title,
-    }));
-  }
-
-  if (market === "freepik") {
-    return items.map((item) => ({
-      file_name: item.file.name,
-      title: item.title,
-      tags: item.keywords,
-    }));
-  }
-
-  if (market === "adobe") {
-    return items.map((item) => ({
-      Filename: item.file.name,
-      Title: item.title,
-      Keywords: item.keywords,
-      Category: "",
-      Releases: "",
-    }));
-  }
-
-  if (market === "miricanvas") {
-    return items.map((item) => ({
-      fileName: item.file.name.replace(/\.[^/.]+$/, ""),
-      elementName: item.title,
-      keywords: item.keywords,
-      tier: "Premium",
-      contentType: "SVGelement",
-    }));
-  }
-
-  return [];
-};
-
-const exportAllCSV = () => {
-  const markets = ["canva", "freepik", "adobe", "miricanvas"];
-
-  markets.forEach((market, i) => {
-    setTimeout(() => {
-      const csvData = generateCSVByMarket(market);
-
-      const csv = Papa.unparse(csvData as any);
-
-      const blob = new Blob([csv], {
-        type: "text/csv;charset=utf-8;",
-      });
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-
-      const baseName = `${market}_metadata`;
-
-      const cleanName = exportName
-        ?.trim()
-        .replace(/\s+/g, "_")
-        .toLowerCase();
-
-      const finalName = cleanName
-        ? `${baseName}_${cleanName}`
-        : baseName;
-
-      link.download = `${finalName}.csv`;
-
-      link.click();
-    }, i * 300); // delay biar browser aman
-  });
-};
 
   const exportCSV = () => {
     let csvData: any[] = [];
@@ -229,53 +141,9 @@ const exportAllCSV = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    const baseName = `${marketplace}_`;
-
-const cleanName = exportName
-  ?.trim()
-  .replace(/\s+/g, "_")
-  .toLowerCase();
-
-const finalName = cleanName
-  ? `${baseName}_${cleanName}`
-  : baseName;
-
-link.download = `${finalName}_${date}.csv`;
+    link.download = `${marketplace}-metadata.csv`;
     link.click();
   };
-
-const exportZip = async () => {
-  const zip = new JSZip();
-
-  const markets = ["canva", "freepik", "adobe", "miricanvas"];
-
-  for (const market of markets) {
-    const csvData = generateCSVByMarket(market);
-
-    const csv = Papa.unparse(csvData as any);
-
-    const baseName = `${market}_`;
-
-    const cleanName = exportName
-      ?.trim()
-      .replace(/\s+/g, "_")
-      .toLowerCase();
-
-    const finalName = cleanName
-      ? `${baseName}_${cleanName}`
-      : baseName;
-
-    zip.file(`${finalName}_${date}.csv`, csv);
-  }
-
-  const content = await zip.generateAsync({ type: "blob" });
-
-  const zipName = exportName
-    ? `metadata_${exportName}_${date}.zip`
-    : "metadata_bundle.zip";
-
-  saveAs(content, zipName);
-};
 
   const getKeywordsArray = (value?: string) => {
     if (!value) return [];
@@ -286,31 +154,19 @@ const exportZip = async () => {
       .filter((k) => k !== "");
   };
   
-const addKeyword = (index: number, keyword: string) => {
-  const clean = keyword.trim();
-  if (!clean) return;
-
-  setItems((prev) =>
-    prev.map((item, i) => {
-      if (i !== index) return item;
-
-      const existing = getKeywordsArray(item.keywords);
-
-      // 🔥 paksa buang semua versi keyword ini
-      const filtered = existing.filter(
-        (k) => k.toLowerCase() !== clean.toLowerCase()
-      );
-
-        const updated = [clean, ...filtered];
-
-      // 🔥 paksa di depan
-      return {
-        ...item,
-        keywords: [clean, ...filtered].join(", "),
-      };
-    })
-  );
-};
+  const addKeyword = (index: number, keyword: string) => {
+    if (!keyword.trim()) return;
+  
+    const updated = [...items];
+    const current = getKeywordsArray(updated[index].keywords);
+  
+    if (!current.includes(keyword.trim())) {
+      current.push(keyword.trim());
+    }
+  
+    updated[index].keywords = current.join(", ");
+    setItems(updated);
+  };
   
   const removeKeyword = (index: number, keyword: string) => {
     const updated = [...items];
@@ -333,17 +189,8 @@ const addKeyword = (index: number, keyword: string) => {
   <p className="text-gray-500 text-sm">
     Generate & manage metadata for your elements
   </p>
-<a
-  href="/preview-svg"
-  className="text-blue-500 text-sm"
->
-  SVG Preview Tool →
-</a>
   </div>
 </div>
-
-
-
 
       {/* Upload */}
       <div
@@ -385,36 +232,32 @@ const addKeyword = (index: number, keyword: string) => {
 
       {/* Bulk Keyword */}
       <div className="flex gap-2 mb-4">
-     <input
-  type="text"
-  placeholder="Add keyword to all"
-  onKeyDown={(e) => {
-    if (e.key === "Enter") {
-      const value = (e.target as HTMLInputElement).value.trim();
-      if (!value) return;
+        <input
+          type="text"
+          placeholder="Add keyword to all"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              const value = (e.target as HTMLInputElement).value;
 
-      const updated = items.map((item) => {
-        const existing = getKeywordsArray(item.keywords);
+              const updated = items.map((item) => {
+                const combined = item.keywords
+                  ? item.keywords + ", " + value
+                  : value;
+              
+                return {
+                  ...item,
+                  keywords: formatKeywords(combined),
+                };
+              });
 
-        const filtered = existing.filter(
-          (k) => k.toLowerCase() !== value.toLowerCase()
-        );
+              setItems(updated);
+              (e.target as HTMLInputElement).value = "";
+            }
+          }}
+          className="border p-2 w-full"
+        />
+      </div>
 
-        const newKeywords = [value, ...filtered];
-
-        return {
-          ...item,
-          keywords: formatKeywords(newKeywords.join(", ")),
-        };
-      });
-
-      setItems(updated);
-      (e.target as HTMLInputElement).value = "";
-    }
-  }}
-  className="border p-2 w-full"
-/>
-</div>
 
       {/* Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
@@ -431,7 +274,6 @@ const addKeyword = (index: number, keyword: string) => {
         className="max-h-full object-contain"
       />
     </div>
-    
 
     {/* Actions */}
     <div className="flex justify-between mb-2">
@@ -477,110 +319,49 @@ const addKeyword = (index: number, keyword: string) => {
     />
 
     {/* Keywords (FIXED) */}
-    <div className="flex justify-between mb-1">
-  <button
-    onClick={() => {
-      navigator.clipboard.writeText(item.keywords || "");
-    }}
-    className="text-xs text-gray-500 hover:text-black"
-  >
-    Copy
-  </button>
-
-  <button
-    onClick={() => updateItem(index, "keywords", "")}
-    className="text-xs text-red-400 hover:text-red-600"
-  >
-    Clear
-  </button>
-</div>
     <div className="border rounded p-2 flex flex-wrap gap-1">
-      {getKeywordsArray(item.keywords).map((kw, i) => {
-  const isEditing =
-    editing &&
-    editing.index === index &&
-    editing.keyword === kw;
-
-  return (
-    <span
-      key={i}
-      className="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs flex items-center gap-1"
-    >
-      {isEditing ? (
-        <input
-          autoFocus
-          defaultValue={kw}
-          className="bg-transparent outline-none text-xs"
-          onBlur={(e) => {
-            const newValue = e.target.value.trim();
-
-            const arr = getKeywordsArray(item.keywords).map((k) =>
-              k === kw ? newValue : k
-            );
-
-            updateItem(index, "keywords", arr.join(", "));
-            setEditing(null);
-          }}
-        />
-      ) : (
+      {getKeywordsArray(item.keywords).map((kw, i) => (
         <span
-          onClick={() => setEditing({ index, keyword: kw })}
-          className="cursor-pointer"
+          key={i}
+          className="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs flex items-center gap-1"
         >
           {kw}
+          <button
+            onClick={() => removeKeyword(index, kw)}
+            className="text-blue-400 hover:text-red-500"
+          >
+            ✕
+          </button>
         </span>
-      )}
+      ))}
 
-      <button
-        onClick={() => removeKeyword(index, kw)}
-        className="text-blue-400 hover:text-red-500"
-      >
-        ✕
-      </button>
-    </span>
-  );
-})}
       <input
-      type="text"
-      placeholder="add keyword"
-      className="flex-1 text-sm outline-none"
-      onKeyDown={(e) => {
-        const value = e.currentTarget.value;
-
-        // ➕ tambah keyword
-        if (e.key === "Enter" || e.key === ",") {
-          e.preventDefault();
-          addKeyword(index, value);
-          e.currentTarget.value = "";
-        }
-
-        // ❌ hapus keyword terakhir
-        if (e.key === "Backspace" && !value) {
-          const arr = getKeywordsArray(item.keywords);
-          arr.pop();
-
-          updateItem(index, "keywords", arr.join(", "));
-        }
-      }}
-    />
+        type="text"
+        placeholder="add keyword"
+        className="flex-1 text-sm outline-none"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            addKeyword(index, e.currentTarget.value);
+            e.currentTarget.value = "";
+          }
+        }}
+      />
     </div>
 
     {/* Counter */}
     <p className="text-xs mt-1 text-gray-500">
       {countKeywords(item.keywords || "")} keywords
     </p>
-   </div>
-  ))}
-</div>
-
- {/* Export */}
- <div className="mt-6 flex flex-col gap-3">
-  
-  <div className="flex flex-col gap-2 w-83">
+  </div>
+))}   
+      </div>
+           {/* Export */}
+           <div className="flex flex-col items-start gap-2 mb-2 mt-5">
   <select
     value={marketplace}
     onChange={(e) => setMarketplace(e.target.value)}
-    className="border p-2 text-sm w-full "
+    className="border p-2 text-sm"
   >
     <option value="canva">Canva</option>
     <option value="freepik">Freepik</option>
@@ -588,31 +369,13 @@ const addKeyword = (index: number, keyword: string) => {
     <option value="miricanvas">Miricanvas</option>
   </select>
 
-     {/* Costum Name Export */}
-      <input
-   type="text"
-    placeholder="custom file name"
-    value={exportName}
-    onChange={(e) => setExportName(e.target.value)}
-    className="border p-2 text-sm flex-1"
-/>
-  </div>
-  <div className="flex gap-3">
   <button
     onClick={exportCSV}
-    className="bg-black text-white px-4 py-2 rounded w-40"
+    className="mt-2 bg-black text-white px-4 py-2 rounded"
   >
     Export CSV
   </button>
-  <button
-    onClick={exportZip}
-    className="bg-black text-white px-4 py-2 rounded w-40"
-  >
-    Export All
-  </button>
-  </div>
-
-</div> 
+</div>
       </main>
   );
 }
